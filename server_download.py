@@ -3,6 +3,7 @@ from subprocess import call
 import os
 import uuid
 import shutil
+from processor import imageGeneration
 
 app = Flask(__name__)
 
@@ -22,32 +23,24 @@ def upload_file():
 @app.route('/uploader', methods = ['GET', 'POST'])
 def uploader_file():
     if request.method == 'POST':
-        global uid
-        global path_in
-        global path_out
-        global path_arch
-        f = request.files.getlist("file")
-        uid = str(uuid.uuid4())
-        path_in = os.path.join(working_dir + "in/", uid)
-        path_out = os.path.join(working_dir + "out/")
-        path_arch = os.path.join(working_dir + "arch/", uid)
-        os.mkdir(path_in)
-        for file in f:
-            file.save(os.path.join(path_in, file.filename))
-        print("Files has been uploaded")
-        call(["python", "./processor.py"])
+        incoming_data = request.get_json()
+
+        path_in = r"{}".format(incoming_data['data']['path_in'])
+        path_out = r"{}".format(incoming_data['data']['path_out'])
+        path_arch = r"{}".format(incoming_data['data']['path_arch'])
+        imageGeneration(path_in, path_out)
         shutil.make_archive(path_arch, 'zip', path_out)
-        #files_rem = glob.glob(path_out+"*")
-        #for f in files_rem:
-        #    os.remove(f)
-        return redirect('upload')
+        return path_in
+
 
 # Download handler
-@app.route("/download")
+@app.route("/download", methods=['GET', 'POST'])
 def downloadFile():
-    archive = path_arch + ".zip"
-    return send_file(archive, as_attachment=True)
+    if request.method == 'POST':
+        incoming_data = request.get_json()
+        path_arch = r"{}".format(incoming_data['data']['path_arch'])
+        return send_file(path_arch, as_attachment=True)
 
 
 if __name__ == "__main__":
-    app.run(debug = True)
+    app.run(debug=True)
